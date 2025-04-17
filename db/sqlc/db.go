@@ -27,6 +27,12 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getClientStmt, err = db.PrepareContext(ctx, getClient); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClient: %w", err)
 	}
+	if q.getClientBySlugStmt, err = db.PrepareContext(ctx, getClientBySlug); err != nil {
+		return nil, fmt.Errorf("error preparing query GetClientBySlug: %w", err)
+	}
+	if q.listClientsStmt, err = db.PrepareContext(ctx, listClients); err != nil {
+		return nil, fmt.Errorf("error preparing query ListClients: %w", err)
+	}
 	return &q, nil
 }
 
@@ -35,6 +41,16 @@ func (q *Queries) Close() error {
 	if q.getClientStmt != nil {
 		if cerr := q.getClientStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getClientStmt: %w", cerr)
+		}
+	}
+	if q.getClientBySlugStmt != nil {
+		if cerr := q.getClientBySlugStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getClientBySlugStmt: %w", cerr)
+		}
+	}
+	if q.listClientsStmt != nil {
+		if cerr := q.listClientsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listClientsStmt: %w", cerr)
 		}
 	}
 	return err
@@ -74,15 +90,19 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db            DBTX
-	tx            *sql.Tx
-	getClientStmt *sql.Stmt
+	db                  DBTX
+	tx                  *sql.Tx
+	getClientStmt       *sql.Stmt
+	getClientBySlugStmt *sql.Stmt
+	listClientsStmt     *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:            tx,
-		tx:            tx,
-		getClientStmt: q.getClientStmt,
+		db:                  tx,
+		tx:                  tx,
+		getClientStmt:       q.getClientStmt,
+		getClientBySlugStmt: q.getClientBySlugStmt,
+		listClientsStmt:     q.listClientsStmt,
 	}
 }

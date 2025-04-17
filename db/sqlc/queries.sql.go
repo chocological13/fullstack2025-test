@@ -34,3 +34,72 @@ func (q *Queries) GetClient(ctx context.Context, id int32) (MyClient, error) {
 	)
 	return i, err
 }
+
+const getClientBySlug = `-- name: GetClientBySlug :one
+SELECT id, name, slug, is_project, self_capture, client_prefix, client_logo, address, phone_number, city, created_at, updated_at, deleted_at FROM my_client
+WHERE slug = $1 AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) GetClientBySlug(ctx context.Context, slug string) (MyClient, error) {
+	row := q.queryRow(ctx, q.getClientBySlugStmt, getClientBySlug, slug)
+	var i MyClient
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.IsProject,
+		&i.SelfCapture,
+		&i.ClientPrefix,
+		&i.ClientLogo,
+		&i.Address,
+		&i.PhoneNumber,
+		&i.City,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const listClients = `-- name: ListClients :many
+SELECT id, name, slug, is_project, self_capture, client_prefix, client_logo, address, phone_number, city, created_at, updated_at, deleted_at FROM my_client
+WHERE deleted_at IS NULL
+ORDER BY name
+`
+
+func (q *Queries) ListClients(ctx context.Context) ([]MyClient, error) {
+	rows, err := q.query(ctx, q.listClientsStmt, listClients)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MyClient
+	for rows.Next() {
+		var i MyClient
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Slug,
+			&i.IsProject,
+			&i.SelfCapture,
+			&i.ClientPrefix,
+			&i.ClientLogo,
+			&i.Address,
+			&i.PhoneNumber,
+			&i.City,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

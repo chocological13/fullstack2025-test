@@ -8,6 +8,7 @@ import (
 	"github.com/go-redis/redis/v8"
 	"github.com/joho/godotenv"
 	"log"
+	"net/http"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -53,4 +54,16 @@ func main() {
 	// Start server
 	fmt.Println("Server started on :8080", app)
 	log.Fatal(router.Run(":8080"))
+
+}
+
+// handlers
+func (app *application) listClients(c *gin.Context) {
+	clients, err := app.db.ListClients(c)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"clients": clients})
 }
