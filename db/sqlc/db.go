@@ -27,6 +27,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createClientStmt, err = db.PrepareContext(ctx, createClient); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateClient: %w", err)
 	}
+	if q.deleteClientStmt, err = db.PrepareContext(ctx, deleteClient); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteClient: %w", err)
+	}
 	if q.getClientStmt, err = db.PrepareContext(ctx, getClient); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClient: %w", err)
 	}
@@ -36,6 +39,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.listClientsStmt, err = db.PrepareContext(ctx, listClients); err != nil {
 		return nil, fmt.Errorf("error preparing query ListClients: %w", err)
 	}
+	if q.updateClientStmt, err = db.PrepareContext(ctx, updateClient); err != nil {
+		return nil, fmt.Errorf("error preparing query UpdateClient: %w", err)
+	}
 	return &q, nil
 }
 
@@ -44,6 +50,11 @@ func (q *Queries) Close() error {
 	if q.createClientStmt != nil {
 		if cerr := q.createClientStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing createClientStmt: %w", cerr)
+		}
+	}
+	if q.deleteClientStmt != nil {
+		if cerr := q.deleteClientStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteClientStmt: %w", cerr)
 		}
 	}
 	if q.getClientStmt != nil {
@@ -59,6 +70,11 @@ func (q *Queries) Close() error {
 	if q.listClientsStmt != nil {
 		if cerr := q.listClientsStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listClientsStmt: %w", cerr)
+		}
+	}
+	if q.updateClientStmt != nil {
+		if cerr := q.updateClientStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing updateClientStmt: %w", cerr)
 		}
 	}
 	return err
@@ -101,9 +117,11 @@ type Queries struct {
 	db                  DBTX
 	tx                  *sql.Tx
 	createClientStmt    *sql.Stmt
+	deleteClientStmt    *sql.Stmt
 	getClientStmt       *sql.Stmt
 	getClientBySlugStmt *sql.Stmt
 	listClientsStmt     *sql.Stmt
+	updateClientStmt    *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
@@ -111,8 +129,10 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		db:                  tx,
 		tx:                  tx,
 		createClientStmt:    q.createClientStmt,
+		deleteClientStmt:    q.deleteClientStmt,
 		getClientStmt:       q.getClientStmt,
 		getClientBySlugStmt: q.getClientBySlugStmt,
 		listClientsStmt:     q.listClientsStmt,
+		updateClientStmt:    q.updateClientStmt,
 	}
 }

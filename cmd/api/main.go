@@ -53,7 +53,18 @@ func main() {
 
 	router := gin.Default()
 
-	// TODO : routes here
+	// Routes
+	apiGroup := router.Group("/api")
+	{
+		clients := apiGroup.Group("/clients")
+		{
+			clients.GET("/", app.listClients)
+			clients.POST("/", app.createClient)
+			clients.GET("/:id", app.getClient)
+			clients.PUT("/:id", app.updateClient)
+			clients.DELETE("/:id", app.deleteClient)
+		}
+	}
 
 	// Start server
 	fmt.Println("Server started on :8080", app)
@@ -89,21 +100,74 @@ func (app *application) createClient(c *gin.Context) {
 	clientJSON, _ := json.Marshal(client)
 	app.redis.Set(c, fmt.Sprintf("client:%s", client.Slug), clientJSON, 0)
 
-	c.JSON(http.StatusCreated, client)
+	c.JSON(http.StatusCreated, gin.H{"client": client})
 }
 
 func (app *application) getClient(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid client ID"})
 		return
 	}
 
 	client, err := app.db.GetClient(c, int32(id))
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+		c.JSON(http.StatusNotFound, gin.H{"error": "client not found"})
 		return
 	}
 
-	c.JSON(http.StatusOK, client)
+	c.JSON(http.StatusOK, gin.H{"client": client})
+}
+
+func (app *application) updateClient(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid client ID"})
+		return
+	}
+
+	var params db.UpdateClientParams
+	if err := c.ShouldBindJSON(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	params.ID = int32(id)
+
+	client, err := app.db.UpdateClient(c, params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Update Redis
+	clientJSON, _ := json.Marshal(client)
+	app.redis.Set(c, fmt.Sprintf("client:%s", client.Slug), clientJSON, 0)
+
+	c.JSON(http.StatusOK, gin.H{"client": client})
+}
+
+func (app *application) deleteClient(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid client ID"})
+		return
+	}
+
+	// Get client slug before deletion
+	client, err := app.db.GetClient(c, int32(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "client not found"})
+		return
+	}
+
+	err = app.db.DeleteClient(c, int32(id))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Delete from Redis
+	app.redis.Del(c, fmt.Sprintf("client:%s", client.Slug))
+
+	c.JSON(http.StatusOK, gin.H{"delete client": "success"})
 }

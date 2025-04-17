@@ -10,9 +10,11 @@ import (
 
 type Querier interface {
 	CreateClient(ctx context.Context, arg CreateClientParams) (MyClient, error)
+	DeleteClient(ctx context.Context, id int32) error
 	GetClient(ctx context.Context, id int32) (MyClient, error)
 	GetClientBySlug(ctx context.Context, slug string) (MyClient, error)
 	ListClients(ctx context.Context) ([]MyClient, error)
+	UpdateClient(ctx context.Context, arg UpdateClientParams) (MyClient, error)
 }
 
 var _ Querier = (*Queries)(nil)
