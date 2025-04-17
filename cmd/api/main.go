@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	db "fullstack2025-test/db/sqlc"
 	"github.com/gin-gonic/gin"
@@ -10,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	_ "github.com/lib/pq"
 )
@@ -51,13 +53,15 @@ func main() {
 
 	router := gin.Default()
 
+	// TODO : routes here
+
 	// Start server
 	fmt.Println("Server started on :8080", app)
 	log.Fatal(router.Run(":8080"))
 
 }
 
-// handlers
+// Handlers
 func (app *application) listClients(c *gin.Context) {
 	clients, err := app.db.ListClients(c)
 	if err != nil {
@@ -66,4 +70,40 @@ func (app *application) listClients(c *gin.Context) {
 	}
 
 	c.JSON(200, gin.H{"clients": clients})
+}
+
+func (app *application) createClient(c *gin.Context) {
+	var params db.CreateClientParams
+	if err := c.ShouldBindJSON(&params); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	client, err := app.db.CreateClient(c, params)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Store in Redis
+	clientJSON, _ := json.Marshal(client)
+	app.redis.Set(c, fmt.Sprintf("client:%s", client.Slug), clientJSON, 0)
+
+	c.JSON(http.StatusCreated, client)
+}
+
+func (app *application) getClient(c *gin.Context) {
+	id, err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid client ID"})
+		return
+	}
+
+	client, err := app.db.GetClient(c, int32(id))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Client not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, client)
 }

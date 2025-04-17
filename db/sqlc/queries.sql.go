@@ -7,7 +7,60 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
+
+const createClient = `-- name: CreateClient :one
+INSERT INTO my_client (
+    name, slug, is_project, self_capture, client_prefix,
+    client_logo, address, phone_number, city, created_at
+) VALUES (
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
+) RETURNING id, name, slug, is_project, self_capture, client_prefix, client_logo, address, phone_number, city, created_at, updated_at, deleted_at
+`
+
+type CreateClientParams struct {
+	Name         string         `json:"name"`
+	Slug         string         `json:"slug"`
+	IsProject    string         `json:"is_project"`
+	SelfCapture  string         `json:"self_capture"`
+	ClientPrefix string         `json:"client_prefix"`
+	ClientLogo   string         `json:"client_logo"`
+	Address      sql.NullString `json:"address"`
+	PhoneNumber  sql.NullString `json:"phone_number"`
+	City         sql.NullString `json:"city"`
+}
+
+func (q *Queries) CreateClient(ctx context.Context, arg CreateClientParams) (MyClient, error) {
+	row := q.queryRow(ctx, q.createClientStmt, createClient,
+		arg.Name,
+		arg.Slug,
+		arg.IsProject,
+		arg.SelfCapture,
+		arg.ClientPrefix,
+		arg.ClientLogo,
+		arg.Address,
+		arg.PhoneNumber,
+		arg.City,
+	)
+	var i MyClient
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Slug,
+		&i.IsProject,
+		&i.SelfCapture,
+		&i.ClientPrefix,
+		&i.ClientLogo,
+		&i.Address,
+		&i.PhoneNumber,
+		&i.City,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
 
 const getClient = `-- name: GetClient :one
 SELECT id, name, slug, is_project, self_capture, client_prefix, client_logo, address, phone_number, city, created_at, updated_at, deleted_at FROM my_client

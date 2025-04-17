@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	CreateClient(ctx context.Context, arg CreateClientParams) (MyClient, error)
 	GetClient(ctx context.Context, id int32) (MyClient, error)
 	GetClientBySlug(ctx context.Context, slug string) (MyClient, error)
 	ListClients(ctx context.Context) ([]MyClient, error)

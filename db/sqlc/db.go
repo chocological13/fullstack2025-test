@@ -24,6 +24,9 @@ func New(db DBTX) *Queries {
 func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	q := Queries{db: db}
 	var err error
+	if q.createClientStmt, err = db.PrepareContext(ctx, createClient); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateClient: %w", err)
+	}
 	if q.getClientStmt, err = db.PrepareContext(ctx, getClient); err != nil {
 		return nil, fmt.Errorf("error preparing query GetClient: %w", err)
 	}
@@ -38,6 +41,11 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 
 func (q *Queries) Close() error {
 	var err error
+	if q.createClientStmt != nil {
+		if cerr := q.createClientStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createClientStmt: %w", cerr)
+		}
+	}
 	if q.getClientStmt != nil {
 		if cerr := q.getClientStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getClientStmt: %w", cerr)
@@ -92,6 +100,7 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 type Queries struct {
 	db                  DBTX
 	tx                  *sql.Tx
+	createClientStmt    *sql.Stmt
 	getClientStmt       *sql.Stmt
 	getClientBySlugStmt *sql.Stmt
 	listClientsStmt     *sql.Stmt
@@ -101,6 +110,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
 		db:                  tx,
 		tx:                  tx,
+		createClientStmt:    q.createClientStmt,
 		getClientStmt:       q.getClientStmt,
 		getClientBySlugStmt: q.getClientBySlugStmt,
 		listClientsStmt:     q.listClientsStmt,
